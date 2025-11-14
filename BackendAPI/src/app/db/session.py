@@ -21,6 +21,27 @@ _engine: Optional[AsyncEngine] = None
 _async_session: Optional[async_sessionmaker[AsyncSession]] = None
 
 
+def _normalize_database_url(url: str) -> str:
+    """
+    Normalize the database URL to ensure async driver is used.
+
+    If the provided URL starts with 'postgresql://' or 'postgres://', convert it
+    to 'postgresql+asyncpg://'. If it already includes a driver, leave it as-is.
+    """
+    if not url:
+        return url
+    # If already has a driver (e.g., postgresql+asyncpg://), return as-is
+    if url.startswith("postgresql+"):
+        return url
+    # Handle common postgres scheme variants
+    if url.startswith("postgres://"):
+        # Replace 'postgres://' with 'postgresql+asyncpg://'
+        return "postgresql+asyncpg://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://") :]
+    return url
+
+
 def get_engine() -> AsyncEngine:
     """
     Return a singleton AsyncEngine, creating it on first use.
@@ -31,7 +52,8 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
+        normalized_url = _normalize_database_url(settings.DATABASE_URL)
+        _engine = create_async_engine(normalized_url, echo=False, future=True)
     return _engine
 
 
