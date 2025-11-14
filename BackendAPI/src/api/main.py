@@ -125,4 +125,5 @@ def create_app() -> FastAPI:
     return app
 
 
+# PUBLIC_INTERFACE
 app = create_app()
