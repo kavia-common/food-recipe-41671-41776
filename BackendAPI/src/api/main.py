@@ -97,6 +97,15 @@ def create_app() -> FastAPI:
         """Health endpoint to verify service liveness."""
         return {"message": "Healthy"}
 
+    # PUBLIC_INTERFACE
+    @app.get("/healthz", summary="Liveness probe", tags=["health"])
+    def healthz():
+        """
+        Liveness endpoint used by deployment probes.
+        This endpoint has no external dependencies (e.g., database) and should always return 200 when the app is running.
+        """
+        return {"status": "ok"}
+
     # Example docs route for WebSocket usage (none used now) to satisfy doc guidance
     # PUBLIC_INTERFACE
     @app.get("/docs/websocket-usage", summary="WebSocket Usage", tags=["health"])
