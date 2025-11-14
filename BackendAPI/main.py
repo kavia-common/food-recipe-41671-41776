@@ -1,16 +1,62 @@
 """
-Entrypoint module for uvicorn/gunicorn to locate the FastAPI ASGI app.
+ASGI entrypoint for uvicorn/gunicorn to locate the FastAPI application.
 
-This module exposes "app" by importing it from the project's actual application factory module.
-It allows commands like:
-    uvicorn main:app --host 0.0.0.0 --port 8000
+This module attempts to import and expose "app" from the internal module at:
+    src/api/main.py
 
-Notes:
-- The actual app is defined in src/api/main.py as `app = create_app()`.
-- Ensure PYTHONPATH includes this repository root or BackendAPI/ so that the `src` package is discoverable.
+It ensures the ./src directory is on sys.path so that imports work whether uvicorn
+is started from the BackendAPI folder or from the repo root.
+
+Typical usage:
+    uvicorn main:app --host 0.0.0.0 --port 3001
 """
 
-from src.api.main import app as _internal_app  # re-exported below without causing F401/F811
+import os
+import sys
+from typing import Optional
+
+# Ensure the BackendAPI/src folder is importable regardless of CWD.
+# This avoids the need to set PYTHONPATH externally.
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_src_dir = os.path.join(_current_dir, "src")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+_internal_app: Optional[object] = None
+
+try:
+    # Import the real FastAPI app from internal module
+    from src.api.main import app as _real_app  # type: ignore
+    _internal_app = _real_app
+except Exception as import_err:
+    # Fallback: provide a minimal FastAPI app so uvicorn can still boot,
+    # exposing a health endpoint that surfaces the import error.
+    try:
+        from fastapi import FastAPI
+    except Exception:  # minimal guard if fastapi itself is missing
+        raise import_err
+
+    fallback = FastAPI(
+        title="BackendAPI (Fallback)",
+        description="Fallback app exposed because internal app import failed.",
+        version="0.0.0",
+        openapi_tags=[{"name": "health", "description": "Health check and import status"}],
+    )
+
+    # Capture error text to avoid lint issues with free variable
+    _import_error_text = str(import_err)
+
+    # PUBLIC_INTERFACE
+    @fallback.get("/", summary="Health Check", tags=["health"])
+    def health():
+        """Health endpoint indicating fallback mode and the reason."""
+        return {
+            "message": "BackendAPI fallback app running",
+            "detail": "Failed to import src.api.main:app",
+            "error": _import_error_text,
+        }
+
+    _internal_app = fallback
 
 
 # PUBLIC_INTERFACE

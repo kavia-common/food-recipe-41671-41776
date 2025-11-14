@@ -61,7 +61,7 @@ async def login(payload: UserLoginIn):
 # PUBLIC_INTERFACE
 @router.get("/{id}/profile", response_model=UserOut, summary="Get user profile")
 async def get_profile(id: int = Path(..., description="User ID")):
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(User).where(User.id == id))
         u = result.scalar_one_or_none()
         if not u:
@@ -75,7 +75,7 @@ async def patch_profile(id: int, payload: UserProfileUpdateIn, user=Depends(get_
     if user.id != id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(User).where(User.id == id))
         u = result.scalar_one_or_none()
         if not u:
@@ -92,7 +92,7 @@ async def patch_profile(id: int, payload: UserProfileUpdateIn, user=Depends(get_
 # PUBLIC_INTERFACE
 @router.post("/preferences", summary="Update user preferences")
 async def update_preferences(payload: Dict[str, Any], user=Depends(get_current_user)):
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(User).where(User.id == user.id))
         u = result.scalar_one_or_none()
         if not u:

@@ -77,7 +77,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     except JWTError:
         raise credentials_exception
 
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(User).where(User.id == int(sub)))
         user = result.scalar_one_or_none()
         if not user:
@@ -92,7 +92,7 @@ auth_router = APIRouter()
 @auth_router.post("/token", response_model=Token, summary="OAuth2 Token (internal)")
 async def token(email: EmailStr, password: str):
     """Issue a bearer token for valid credentials (internal helper)."""
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(User).where(User.email == str(email)))
         user: Optional[User] = result.scalar_one_or_none()
         if not user or not verify_password(password, user.password_hash):
