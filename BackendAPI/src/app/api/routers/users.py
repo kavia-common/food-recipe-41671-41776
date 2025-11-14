@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy import select
 
 from src.app.core.security import create_access_token, get_current_user, get_password_hash, verify_password
-from src.app.db.session import async_session
+from src.app.db.session import get_sessionmaker
 from src.app.models.user import User
 from src.app.schemas.user import (
     UserLoginIn,
@@ -36,7 +36,7 @@ def _user_to_out(u: User) -> UserOut:
 # PUBLIC_INTERFACE
 @router.post("/register", status_code=201, summary="Register a new user")
 async def register(payload: UserRegisterIn):
-    async with async_session() as session:  # type: AsyncSession
+    async with get_sessionmaker()() as session:  # type: AsyncSession
         exists = await session.execute(select(User).where(User.email == str(payload.email)))
         if exists.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already registered")
@@ -49,7 +49,7 @@ async def register(payload: UserRegisterIn):
 # PUBLIC_INTERFACE
 @router.post("/login", summary="User login")
 async def login(payload: UserLoginIn):
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(User).where(User.email == str(payload.email)))
         u = result.scalar_one_or_none()
         if not u or not verify_password(payload.password, u.password_hash):

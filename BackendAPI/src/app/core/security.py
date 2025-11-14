@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 
 from src.app.core.config import get_settings
-from src.app.db.session import async_session
+from src.app.db.session import get_sessionmaker
 from src.app.models.user import User
 from sqlalchemy import select
 
@@ -56,7 +56,7 @@ async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme
     except JWTError:
         return None
 
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(User).where(User.id == int(sub)))
         user = result.scalar_one_or_none()
         return user

@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select, or_
 
-from src.app.db.session import async_session
+from src.app.db.session import get_sessionmaker
 from src.app.models.recipe import Recipe
 from src.app.schemas.recipe import RecipeOut
 
@@ -46,7 +46,7 @@ async def list_recipes(
     size: int = Query(default=20, ge=1, le=100),
 ):
     offset = (page - 1) * size
-    async with async_session() as session:  # type: AsyncSession
+    async with get_sessionmaker()() as session:  # type: AsyncSession
         query = select(Recipe)
         # filters
         if cuisine:
@@ -81,7 +81,7 @@ async def list_recipes(
     description="Return a single recipe by ID.",
 )
 async def get_recipe(id: int):
-    async with async_session() as session:
+    async with get_sessionmaker()() as session:
         result = await session.execute(select(Recipe).where(Recipe.id == id))
         r: Optional[Recipe] = result.scalar_one_or_none()
         if not r:

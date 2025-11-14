@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, or_
 
 from src.app.core.security import get_current_user_optional
-from src.app.db.session import async_session
+from src.app.db.session import get_sessionmaker
 from src.app.models.recipe import Recipe
 from src.app.models.user import User
 from src.app.schemas.recipe import RecipeOut
@@ -42,7 +42,7 @@ async def get_recommendations(
     userId: Optional[int] = Query(default=None, description="User ID for personalization"),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    async with async_session() as session:  # type: AsyncSession
+    async with get_sessionmaker()() as session:  # type: AsyncSession
         # Determine which user to use (token user takes precedence)
         uid = None
         if current_user:
